@@ -64,4 +64,8 @@ body {
   .titlebar-button {
     @apply inline-flex justify-center items-center w-8 h-8 bg-transparent opacity-90 hover:opacity-100;
   }
+
+  .btn-rounded {
+    @apply p-4 flex justify-center items-center bg-white rounded-3xl cursor-pointer opacity-80 hover:opacity-100 hover:rounded-2xl transition-all duration-300;
+  }
 }

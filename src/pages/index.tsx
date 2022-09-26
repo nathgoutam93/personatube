@@ -1,11 +1,4 @@
 import { useRef, useEffect, useState, useCallback } from "react";
-import dynamic from "next/dynamic";
-const Header = dynamic(() => import("../components/header"), {
-  ssr: false,
-});
-const FaceMeshCanvas = dynamic(() => import("../components/faceMeshCanvas"), {
-  ssr: false,
-});
 import {
   BsCameraVideo,
   BsCameraVideoOff,
@@ -16,15 +9,33 @@ import {
   BsPalette,
   BsPerson,
 } from "react-icons/bs";
+import dynamic from "next/dynamic";
+const Header = dynamic(() => import("../components/header"), {
+  ssr: false,
+});
+const FaceMeshCanvas = dynamic(() => import("../components/faceMeshCanvas"), {
+  ssr: false,
+});
+import ImageSelect from "../components/imageSelect";
+// import static images from assets
 import idleImage from "../assets/closemouth-openeye.png";
 import idleBlinkImage from "../assets/closemouth-closeeye.png";
 import openImage from "../assets/openmouth-openeye.png";
 import openBlinkImage from "../assets/openmouth-closeeye.png";
+import idleHint from "../assets/idle.gif";
+import idleBlinkHint from "../assets/idleblink.gif";
+import speakingHint from "../assets/speaking.gif";
+import speakingBlinkHint from "../assets/speakingblink.gif";
 
 const Home = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [trackFace, setTrackFace] = useState<boolean>(false);
-  const [images, setImages] = useState({
+  const [images, setImages] = useState<{
+    idle: HTMLImageElement | null;
+    idleblink: HTMLImageElement | null;
+    open: HTMLImageElement | null;
+    openblink: HTMLImageElement | null;
+  }>({
     idle: null,
     idleblink: null,
     open: null,
@@ -91,42 +102,16 @@ const Home = () => {
   }, [currentImg, currentBg, isDrawGrid]);
 
   useEffect(() => {
+    if (images.idle != currentImg) setCurrentImg(images.idle);
+    drawBackground(canvasRef.current);
+    drawGrid(canvasRef.current);
+    drawCurrentState(canvasRef.current);
+  }, [images.idle, images.idleblink, images.open, images.openblink]);
+
+  useEffect(() => {
     const canvasEle = canvasRef.current;
     canvasEle.width = canvasEle.parentElement.clientWidth;
     canvasEle.height = canvasEle.parentElement.clientHeight;
-
-    const idleImg = new Image();
-    idleImg.src = idleImage.src;
-    idleImg.onload = () => {
-      setCurrentImg(idleImg);
-      setImages((prev) => {
-        return { ...prev, idle: idleImg };
-      });
-    };
-
-    const idleBlinkImg = new Image();
-    idleBlinkImg.src = idleBlinkImage.src;
-    idleBlinkImg.onload = () => {
-      setImages((prev) => {
-        return { ...prev, idleblink: idleBlinkImg };
-      });
-    };
-
-    const openImg = new Image();
-    openImg.src = openImage.src;
-    openImg.onload = () => {
-      setImages((prev) => {
-        return { ...prev, open: openImg };
-      });
-    };
-
-    const openBlinkImg = new Image();
-    openBlinkImg.src = openBlinkImage.src;
-    openBlinkImg.onload = () => {
-      setImages((prev) => {
-        return { ...prev, openblink: openBlinkImg };
-      });
-    };
   }, []);
 
   const toggleControls = () => {
@@ -135,9 +120,57 @@ const Home = () => {
     setShowBgOptions(false);
   };
 
-  const toggleTracking = () => {
-    setTrackFace((prev) => !prev);
-  };
+  const onStateChange = useCallback(
+    (state: string) => {
+      if (state === "idle") {
+        setCurrentImg(images.idle);
+      } else if (state === "idle-blink") {
+        setCurrentImg(images.idleblink);
+      } else if (state === "open") {
+        setCurrentImg(images.open);
+      } else {
+        setCurrentImg(images.openblink);
+      }
+    },
+    [images.idle, images.open, images.idleblink, images.openblink]
+  );
+
+  const handleIdleChange = useCallback((src: string) => {
+    const newImg = new Image();
+    newImg.src = src;
+    newImg.onload = () => {
+      setImages((prev) => {
+        return { ...prev, idle: newImg };
+      });
+    };
+  }, []);
+  const handleIdleBlinkChange = useCallback((src: string) => {
+    const newImg = new Image();
+    newImg.src = src;
+    newImg.onload = () => {
+      setImages((prev) => {
+        return { ...prev, idleblink: newImg };
+      });
+    };
+  }, []);
+  const handleOpenChange = useCallback((src: string) => {
+    const newImg = new Image();
+    newImg.src = src;
+    newImg.onload = () => {
+      setImages((prev) => {
+        return { ...prev, open: newImg };
+      });
+    };
+  }, []);
+  const handleOpenBlinkChange = useCallback((src: string) => {
+    const newImg = new Image();
+    newImg.src = src;
+    newImg.onload = () => {
+      setImages((prev) => {
+        return { ...prev, openblink: newImg };
+      });
+    };
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -156,20 +189,9 @@ const Home = () => {
     };
   }, [drawCurrentState, drawBackground, drawGrid]);
 
-  const onStateChange = useCallback(
-    (state: string) => {
-      if (state === "idle") {
-        setCurrentImg(images.idle);
-      } else if (state === "idle-blink") {
-        setCurrentImg(images.idleblink);
-      } else if (state === "open") {
-        setCurrentImg(images.open);
-      } else {
-        setCurrentImg(images.openblink);
-      }
-    },
-    [images.idle, images.open, images.idleblink, images.openblink]
-  );
+  useEffect(() => {
+    console.log("rendered");
+  });
 
   return (
     <>
@@ -180,17 +202,41 @@ const Home = () => {
         <canvas ref={canvasRef} className="absolute inset-0" />
 
         <div
+          className={`absolute top-10 left-10 flex gap-2 ${
+            hideControls && "opacity-0 hover:opacity-100"
+          } transition-opacity duration-300 select-none`}
+        >
+          <ImageSelect
+            preview={idleImage.src}
+            hint={idleHint.src}
+            onChange={handleIdleChange}
+          />
+          <ImageSelect
+            preview={idleBlinkImage.src}
+            hint={idleBlinkHint.src}
+            onChange={handleIdleBlinkChange}
+          />
+          <ImageSelect
+            preview={openImage.src}
+            hint={speakingHint.src}
+            onChange={handleOpenChange}
+          />
+          <ImageSelect
+            preview={openBlinkImage.src}
+            hint={speakingBlinkHint.src}
+            onChange={handleOpenBlinkChange}
+          />
+        </div>
+
+        <div
           className={`absolute top-10 right-10 flex flex-col gap-1 ${
             hideControls && "opacity-0 hover:opacity-100"
           } transition-opacity duration-300`}
         >
-          <button className="p-4 flex justify-center items-center bg-white rounded-3xl cursor-pointer opacity-80 hover:opacity-100 hover:rounded-2xl transition-all duration-300">
+          <button className="btn-rounded">
             <BsGear className="text-gray-700" size={24} />
           </button>
-          <button
-            className={`p-4 flex justify-center items-center bg-white rounded-3xl cursor-pointer opacity-80 hover:opacity-100 hover:rounded-2xl transition-all duration-300`}
-            onClick={toggleControls}
-          >
+          <button className="btn-rounded" onClick={toggleControls}>
             {hideControls ? (
               <BsEyeSlash className="text-gray-700" size={24} />
             ) : (
@@ -206,14 +252,14 @@ const Home = () => {
           } transition-opacity duration-300`}
         >
           <button
-            className="p-4 flex justify-center items-center bg-white rounded-3xl cursor-pointer opacity-80 hover:opacity-100 hover:rounded-2xl transition-all duration-300"
+            className="btn-rounded"
             onClick={() => setDrawGrid((prev) => !prev)}
           >
             <BsGrid3X3 className="text-gray-700" size={24} />
           </button>
           <div className="relative">
             <button
-              className="p-4 flex justify-center items-center bg-white rounded-3xl cursor-pointer opacity-80 hover:opacity-100 hover:rounded-2xl transition-all duration-300"
+              className="btn-rounded"
               onClick={() => setShowBgOptions((prev) => !prev)}
             >
               <BsPalette className="text-gray-700" size={24} />
@@ -244,12 +290,15 @@ const Home = () => {
               }}
             ></button>
           </div>
-          <button className="p-4 flex justify-center items-center bg-white rounded-3xl cursor-pointer opacity-80 hover:opacity-100 hover:rounded-2xl transition-all duration-300">
+          <button className="btn-rounded">
             <BsPerson className="text-gray-700" size={24} />
           </button>
           <button
             className="p-6 flex justify-center items-center bg-white rounded-3xl cursor-pointer opacity-80 hover:opacity-100 hover:rounded-2xl transition-all duration-300"
-            onClick={toggleTracking}
+            onClick={() => {
+              setTrackFace((prev) => !prev);
+              setCurrentImg(images.idle);
+            }}
           >
             {trackFace ? (
               <BsCameraVideoOff className="text-gray-700" size={32} />
@@ -259,12 +308,7 @@ const Home = () => {
           </button>
         </div>
 
-        {trackFace && (
-          <FaceMeshCanvas
-            className="absolute bottom-20 left-2 w-40 h-40 bg-black rounded-3xl overflow-hidden"
-            onStateChange={onStateChange}
-          />
-        )}
+        {trackFace && <FaceMeshCanvas onStateChange={onStateChange} />}
       </main>
     </>
   );
