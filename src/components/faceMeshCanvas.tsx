@@ -30,6 +30,8 @@ const FaceMeshCanvas = ({
   const dragRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ x: number; y: number }>({ x: 100, y: 100 });
 
+  const [faceMesh, setFaceMesh] = useState<FaceMesh>(null);
+
   const drawDebug = (results: Results, canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext("2d");
 
@@ -103,18 +105,19 @@ const FaceMeshCanvas = ({
 
     const canvas = canvasRef.current;
 
-    const faceMesh = new FaceMesh({
+    const face_mesh = new FaceMesh({
       locateFile: (file: string) =>
         `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
     });
 
-    faceMesh.setOptions(faceMeshOptions);
-    faceMesh.onResults((results) => onFaceMeshResults(results, canvas));
+    face_mesh.setOptions(faceMeshOptions);
+
+    setFaceMesh(face_mesh);
 
     const camera = new Camera(webcamRef.current, {
       onFrame: async () => {
         if (webcamRef.current == null) return;
-        await faceMesh.send({ image: webcamRef.current });
+        await face_mesh.send({ image: webcamRef.current });
       },
     });
 
@@ -122,9 +125,17 @@ const FaceMeshCanvas = ({
 
     return () => {
       camera.stop().catch((er) => console.error(er));
-      faceMesh.close().catch((er) => console.error(er));
+      face_mesh.close().catch((er) => console.error(er));
     };
-  }, [onFaceMeshResults]);
+  }, []);
+
+  useEffect(() => {
+    if (canvasRef.current == null || faceMesh == null) return;
+
+    faceMesh.onResults((results) =>
+      onFaceMeshResults(results, canvasRef.current)
+    );
+  }, [faceMesh, onFaceMeshResults]);
 
   // handle Debug screen camera drag events
   useEffect(() => {

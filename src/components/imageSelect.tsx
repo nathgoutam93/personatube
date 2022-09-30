@@ -11,8 +11,6 @@ function ImageSelect({
 }) {
   const filePicker = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File>(null);
-  const [previewImg, setPreviewImg] = useState<string>("");
-  const [hintImg, setHintImg] = useState<string>("");
 
   const handleClick = () => {
     filePicker.current.click();
@@ -27,28 +25,16 @@ function ImageSelect({
   };
 
   useEffect(() => {
-    setPreviewImg(preview);
-  }, [preview]);
-
-  useEffect(() => {
-    setHintImg(hint);
-  }, [hint]);
-
-  useEffect(() => {
     if (file) {
       const reader = new FileReader();
 
       reader.onload = function (e) {
-        setPreviewImg(e.target.result as string);
+        onChange(e.target.result as string);
       };
 
       reader.readAsDataURL(file);
     }
   }, [file]);
-
-  useEffect(() => {
-    onChange(previewImg);
-  }, [previewImg, onChange]);
 
   return (
     <div
@@ -56,7 +42,7 @@ function ImageSelect({
       onClick={handleClick}
     >
       <img
-        src={previewImg}
+        src={preview}
         className="w-full h-full rounded-3xl object-cover"
         alt=""
       />
@@ -69,7 +55,7 @@ function ImageSelect({
         ref={filePicker}
       />
       <img
-        src={hintImg}
+        src={hint}
         className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full object-cover"
         alt=""
       />
