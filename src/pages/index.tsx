@@ -1,20 +1,19 @@
+import dynamic, { noSSR } from "next/dynamic";
 import { useRef, useEffect, useState, useCallback } from "react";
+import { useUser } from "../context/userContext";
 import {
   BaseDirectory,
-  createDir,
   writeTextFile,
   writeBinaryFile,
   renameFile,
-  exists,
 } from "@tauri-apps/api/fs";
-import dynamic from "next/dynamic";
-const Header = dynamic(() => import("../components/header"), {
-  ssr: false,
-});
 const FaceMeshCanvas = dynamic(() => import("../components/faceMeshCanvas"), {
   ssr: false,
 });
-import CharacterSelect from "../components/characterSelect";
+const Settings = dynamic(() => import("../components/settings"), {
+  ssr: false,
+});
+
 import ImageSelect from "../components/imageSelect";
 import imageToBase64 from "../utils/img2bin";
 import bin2img from "../utils/bin2img";
@@ -22,8 +21,7 @@ import { Character } from "../types";
 import {
   BsCameraVideo,
   BsCameraVideoOff,
-  BsCheck,
-  BsCheckLg,
+  BsCloudArrowUp,
   BsEye,
   BsEyeSlash,
   BsGear,
@@ -31,7 +29,6 @@ import {
   BsPalette,
   BsPencil,
   BsPerson,
-  BsPlusSquareDotted,
 } from "react-icons/bs";
 import { BiSave } from "react-icons/bi";
 // import static image assets
@@ -44,8 +41,11 @@ import idleBlinkHint from "../assets/idleblink.gif";
 import speakingHint from "../assets/speaking.gif";
 import speakingBlinkHint from "../assets/speakingblink.gif";
 import loadCharacters from "../utils/loadCharacters";
+import CharactersModal from "../components/charactersModal";
 
 const Home = () => {
+  const { user } = useUser();
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [trackFace, setTrackFace] = useState<boolean>(false);
   const [hideControls, setHideControls] = useState<boolean>(false);
@@ -53,6 +53,7 @@ const Home = () => {
   const [currentBg, setCurrentBg] = useState<string>("#0000ff");
   const [showBgOptions, setShowBgOptions] = useState<boolean>(false);
   const [showCharacters, setShowCharacters] = useState<boolean>(false);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
 
   const [characters, setCharacters] = useState<Character[]>([]);
   const [currentCharacter, setCurrentCharacter] = useState<Character>(null);
@@ -105,7 +106,6 @@ const Home = () => {
 
     // draw Image
     if (currentImg == null) return;
-    console.log("drawImg");
     ctx.drawImage(
       currentImg,
       canvas.width / 2 - currentImg.width / 2,
@@ -334,6 +334,14 @@ const Home = () => {
     [drawCurrentImg]
   );
 
+  const handleBackup = async () => {
+    if (user) {
+      console.log(user);
+    } else {
+      console.log("not logged in");
+    }
+  };
+
   useEffect(() => {
     // Handle Canvas width and height on mount
     const canvasEle = canvasRef.current;
@@ -361,7 +369,6 @@ const Home = () => {
   }, [currentCharacter]);
 
   useEffect(() => {
-    console.log("useEffect");
     drawCurrentImg();
   }, [drawCurrentImg]);
 
@@ -401,236 +408,215 @@ const Home = () => {
     };
   }, [drawCurrentImg]);
 
-  // Debug
-  useEffect(() => {
-    console.log("rendered");
-  });
-
   return (
-    <>
-      {/* window region */}
-      <Header />
+    <main className="relative w-full h-full mt-10">
+      <canvas ref={canvasRef} className="absolute inset-0" />
 
-      <main className="relative w-full h-full mt-10">
-        <canvas ref={canvasRef} className="absolute inset-0" />
+      {showCharacters && (
+        <CharactersModal
+          characters={characters}
+          onClose={() => setShowCharacters(false)}
+          onSelect={(character) => setCurrentCharacter(character)}
+          onNewCharacter={handleNewCharacter}
+        />
+      )}
 
-        {showCharacters && (
-          <div
-            className="fixed inset-0 z-50 bg-black bg-opacity-40"
-            onClick={() => setShowCharacters(false)}
-          >
-            <div
-              className={`absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 max-h-96 p-4 grid grid-cols-4 gap-2 bg-white rounded-3xl overflow-y-scroll`}
-            >
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+
+      <div
+        className={`absolute top-10 left-10 flex justify-center items-center gap-2 ${
+          hideControls && "opacity-0 hover:opacity-100"
+        } transition-opacity duration-300`}
+      >
+        <button className="btn-rounded" onClick={() => setShowCharacters(true)}>
+          <BsPerson className="text-gray-700" size={24} />
+        </button>
+        {isRename ? (
+          <div className="space-y-1">
+            <input
+              ref={renameRef}
+              className="text-xl font-Righteous outline-none bg-transparent border-b"
+            />
+            <div className="flex gap-1">
               <button
-                className="relative w-40 h-40 p-4 rounded-3xl border bg-pastel-blue cursor-pointer"
-                onClick={() => handleNewCharacter()}
+                className="py-1 px-2 text-xl text-black font-Righteous bg-white rounded-lg cursor-pointer"
+                onClick={() => {
+                  setRename(false);
+                  handleRenameCharacter(
+                    renameRef.current.value,
+                    currentCharacter
+                  );
+                }}
               >
-                <BsPlusSquareDotted className="w-full h-full" />
+                Save
               </button>
-              {characters.map((character) => {
-                return (
-                  <CharacterSelect
-                    key={character.name}
-                    character={character}
-                    onSelect={() => setCurrentCharacter(character)}
-                  />
-                );
-              })}
+              <button
+                className="py-1 px-2 text-xl text-black font-Righteous bg-white rounded-lg cursor-pointer"
+                onClick={() => {
+                  setRename(false);
+                }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
+        ) : (
+          currentCharacter && (
+            <>
+              <span className="text-xl font-Righteous">
+                {currentCharacter?.name}
+              </span>
+              <BsPencil
+                className="cursor-pointer"
+                onClick={() => {
+                  setRename(true);
+                }}
+                size={24}
+              />
+            </>
+          )
         )}
+      </div>
 
+      {currentCharacter && (
         <div
-          className={`absolute top-10 left-10 flex justify-center items-center gap-2 ${
+          className={`absolute bottom-20 left-10 flex justify-center items-center gap-1 ${
             hideControls && "opacity-0 hover:opacity-100"
           } transition-opacity duration-300`}
         >
           <button
             className="btn-rounded"
-            onClick={() => setShowCharacters(true)}
-          >
-            <BsPerson className="text-gray-700" size={24} />
-          </button>
-          {isRename ? (
-            <div className="space-y-1">
-              <input
-                ref={renameRef}
-                className="text-xl font-Righteous outline-none bg-transparent border-b"
-              />
-              <div className="flex gap-1">
-                <button
-                  className="py-1 px-2 text-xl text-black font-Righteous bg-white rounded-lg cursor-pointer"
-                  onClick={() => {
-                    setRename(false);
-                    handleRenameCharacter(
-                      renameRef.current.value,
-                      currentCharacter
-                    );
-                  }}
-                >
-                  Save
-                </button>
-                <button
-                  className="py-1 px-2 text-xl text-black font-Righteous bg-white rounded-lg cursor-pointer"
-                  onClick={() => {
-                    setRename(false);
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            currentCharacter && (
-              <>
-                <span className="text-xl font-Righteous">
-                  {currentCharacter?.name}
-                </span>
-                <BsPencil
-                  className="cursor-pointer"
-                  onClick={() => {
-                    setRename(true);
-                  }}
-                  size={24}
-                />
-              </>
-            )
-          )}
-        </div>
-
-        {currentCharacter && (
-          <button
-            className={`absolute bottom-20 left-10 btn-rounded ${
-              hideControls && "opacity-0 hover:opacity-100"
-            } transition-opacity duration-300`}
             onClick={() => handleSaveCharacter(currentCharacter)}
           >
             <BiSave className="text-gray-700" size={24} />
           </button>
+          <button className="btn-rounded" onClick={handleBackup}>
+            <BsCloudArrowUp className="text-gray-700" size={24} />
+          </button>
+          <label className="text-xl text-white font-Righteous">Backup</label>
+        </div>
+      )}
+
+      <div
+        className={`absolute top-10 left-1/2 -translate-x-1/2 flex gap-2 ${
+          hideControls && "opacity-0 hover:opacity-100"
+        } transition-opacity duration-300 select-none`}
+      >
+        {images.idle && (
+          <ImageSelect
+            preview={images.idle}
+            hint={idleHint.src}
+            onChange={handleIdleChange}
+          />
         )}
+        {images.idleblink && (
+          <ImageSelect
+            preview={images.idleblink}
+            hint={idleBlinkHint.src}
+            onChange={handleIdleBlinkChange}
+          />
+        )}
+        {images.open && (
+          <ImageSelect
+            preview={images.open}
+            hint={speakingHint.src}
+            onChange={handleOpenChange}
+          />
+        )}
+        {images.openblink && (
+          <ImageSelect
+            preview={images.openblink}
+            hint={speakingBlinkHint.src}
+            onChange={handleOpenBlinkChange}
+          />
+        )}
+      </div>
 
-        <div
-          className={`absolute top-10 left-1/2 -translate-x-1/2 flex gap-2 ${
-            hideControls && "opacity-0 hover:opacity-100"
-          } transition-opacity duration-300 select-none`}
-        >
-          {images.idle && (
-            <ImageSelect
-              preview={images.idle}
-              hint={idleHint.src}
-              onChange={handleIdleChange}
-            />
+      <div
+        className={`absolute top-10 right-10 flex flex-col gap-1 ${
+          hideControls && "opacity-0 hover:opacity-100"
+        } transition-opacity duration-300`}
+      >
+        <button className="btn-rounded" onClick={() => setShowSettings(true)}>
+          <BsGear className="text-gray-700" size={24} />
+        </button>
+        <button className="btn-rounded" onClick={toggleControls}>
+          {hideControls ? (
+            <BsEyeSlash className="text-gray-700" size={24} />
+          ) : (
+            <BsEye className="text-gray-700" size={24} />
           )}
-          {images.idleblink && (
-            <ImageSelect
-              preview={images.idleblink}
-              hint={idleBlinkHint.src}
-              onChange={handleIdleBlinkChange}
-            />
-          )}
-          {images.open && (
-            <ImageSelect
-              preview={images.open}
-              hint={speakingHint.src}
-              onChange={handleOpenChange}
-            />
-          )}
-          {images.openblink && (
-            <ImageSelect
-              preview={images.openblink}
-              hint={speakingBlinkHint.src}
-              onChange={handleOpenBlinkChange}
-            />
-          )}
-        </div>
+        </button>
+      </div>
 
-        <div
-          className={`absolute top-10 right-10 flex flex-col gap-1 ${
-            hideControls && "opacity-0 hover:opacity-100"
-          } transition-opacity duration-300`}
+      {/* controls */}
+      <div
+        className={`absolute bottom-20 right-10 flex flex-col justify-center items-center gap-1 ${
+          hideControls && "opacity-0 pointer-events-none"
+        } transition-opacity duration-300`}
+      >
+        <button
+          className="btn-rounded"
+          onClick={() => setDrawGrid((prev) => !prev)}
         >
-          <button className="btn-rounded">
-            <BsGear className="text-gray-700" size={24} />
-          </button>
-          <button className="btn-rounded" onClick={toggleControls}>
-            {hideControls ? (
-              <BsEyeSlash className="text-gray-700" size={24} />
-            ) : (
-              <BsEye className="text-gray-700" size={24} />
-            )}
-          </button>
-        </div>
-
-        {/* controls */}
-        <div
-          className={`absolute bottom-20 right-10 flex flex-col justify-center items-center gap-1 ${
-            hideControls && "opacity-0 pointer-events-none"
-          } transition-opacity duration-300`}
-        >
+          <BsGrid3X3 className="text-gray-700" size={24} />
+        </button>
+        <div className="relative">
           <button
             className="btn-rounded"
-            onClick={() => setDrawGrid((prev) => !prev)}
+            onClick={() => setShowBgOptions((prev) => !prev)}
           >
-            <BsGrid3X3 className="text-gray-700" size={24} />
+            <BsPalette className="text-gray-700" size={24} />
           </button>
-          <div className="relative">
-            <button
-              className="btn-rounded"
-              onClick={() => setShowBgOptions((prev) => !prev)}
-            >
-              <BsPalette className="text-gray-700" size={24} />
-            </button>
-            <button
-              className={`absolute bottom-0 right-0 w-12 h-12 p-2 opacity-0 pointer-events-none ${
-                showBgOptions &&
-                "bottom-0 right-16 opacity-100 pointer-events-auto"
-              } border-2 border-white bg-green rounded-3xl cursor-pointer hover:rounded-2xl transition-all duration-300 delay-150`}
-              onClick={() => setCurrentBg("#00ff00")}
-            ></button>
-            <button
-              className={`absolute bottom-0 right-0 w-12 h-12 p-2 opacity-0 pointer-events-none ${
-                showBgOptions &&
-                "bottom-0 right-32 opacity-100 pointer-events-auto"
-              } border-2 border-white bg-blue rounded-3xl cursor-pointer hover:rounded-2xl transition-all duration-300 delay-75`}
-              onClick={() => {
-                setCurrentBg("#0000ff");
-              }}
-            ></button>
-            <button
-              className={`absolute bottom-0 right-0 w-12 h-12 p-2 opacity-0 pointer-events-none ${
-                showBgOptions &&
-                "bottom-0 right-48 opacity-100 pointer-events-auto"
-              } border-2 border-white bg-magenta rounded-3xl cursor-pointer hover:rounded-2xl transition-all duration-300`}
-              onClick={() => {
-                setCurrentBg("#ff00ff");
-              }}
-            ></button>
-          </div>
-
           <button
-            className={`p-6 flex justify-center items-center bg-white rounded-3xl cursor-pointer opacity-80 hover:opacity-100 hover:rounded-2xl transition-all duration-300 disabled:pointer-events-none`}
+            className={`absolute bottom-0 right-0 w-12 h-12 p-2 opacity-0 pointer-events-none ${
+              showBgOptions &&
+              "bottom-0 right-16 opacity-100 pointer-events-auto"
+            } border-2 border-white bg-green rounded-3xl cursor-pointer hover:rounded-2xl transition-all duration-300 delay-150`}
+            onClick={() => setCurrentBg("#00ff00")}
+          ></button>
+          <button
+            className={`absolute bottom-0 right-0 w-12 h-12 p-2 opacity-0 pointer-events-none ${
+              showBgOptions &&
+              "bottom-0 right-32 opacity-100 pointer-events-auto"
+            } border-2 border-white bg-blue rounded-3xl cursor-pointer hover:rounded-2xl transition-all duration-300 delay-75`}
             onClick={() => {
-              setTrackFace((prev) => !prev);
-              const img = new Image();
-              img.onload = () => {
-                setCurrentImg(img);
-              };
-              img.src = images.idle;
+              setCurrentBg("#0000ff");
             }}
-            disabled={!Boolean(currentCharacter)}
-          >
-            {trackFace ? (
-              <BsCameraVideoOff className="text-gray-700" size={32} />
-            ) : (
-              <BsCameraVideo className="text-gray-700" size={32} />
-            )}
-          </button>
+          ></button>
+          <button
+            className={`absolute bottom-0 right-0 w-12 h-12 p-2 opacity-0 pointer-events-none ${
+              showBgOptions &&
+              "bottom-0 right-48 opacity-100 pointer-events-auto"
+            } border-2 border-white bg-magenta rounded-3xl cursor-pointer hover:rounded-2xl transition-all duration-300`}
+            onClick={() => {
+              setCurrentBg("#ff00ff");
+            }}
+          ></button>
         </div>
 
-        {trackFace && <FaceMeshCanvas onStateChange={onStateChange} />}
-      </main>
-    </>
+        <button
+          className={`p-6 flex justify-center items-center bg-white rounded-3xl cursor-pointer opacity-80 hover:opacity-100 hover:rounded-2xl transition-all duration-300 disabled:pointer-events-none`}
+          onClick={() => {
+            setTrackFace((prev) => !prev);
+            const img = new Image();
+            img.onload = () => {
+              setCurrentImg(img);
+            };
+            img.src = images.idle;
+          }}
+          disabled={!Boolean(currentCharacter)}
+        >
+          {trackFace ? (
+            <BsCameraVideoOff className="text-gray-700" size={32} />
+          ) : (
+            <BsCameraVideo className="text-gray-700" size={32} />
+          )}
+        </button>
+      </div>
+
+      {trackFace && <FaceMeshCanvas onStateChange={onStateChange} />}
+    </main>
   );
 };
 

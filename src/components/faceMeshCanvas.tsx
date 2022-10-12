@@ -168,10 +168,6 @@ const FaceMeshCanvas = ({
     };
   }, []);
 
-  useEffect(() => {
-    console.log("faceMesh");
-  });
-
   return (
     <div
       className="absolute bottom-20 left-10 w-40 h-40 bg-black rounded-3xl overflow-hidden cursor-move"

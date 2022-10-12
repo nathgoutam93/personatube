@@ -1,0 +1,26 @@
+type S3object {
+  bucket: String!
+  region: String!
+  key: String!
+}
+
+type State {
+  name: String
+  cm_oe: S3object!
+  cm_ce: S3object!
+  om_oe: S3object!
+  om_ce: S3object
+  hotkey: String
+}
+
+type Character @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  name: String
+  states: State!
+  owner: User! @hasOne
+}
+
+type User @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  username: String!
+}

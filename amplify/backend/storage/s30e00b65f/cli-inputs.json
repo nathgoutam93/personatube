@@ -1,0 +1,13 @@
+{
+  "resourceName": "s30e00b65f",
+  "policyUUID": "0e00b65f",
+  "bucketName": "personatube63d1a442d93c4370b0f25badb738d578",
+  "storageAccess": "auth",
+  "guestAccess": [],
+  "authAccess": [
+    "CREATE_AND_UPDATE",
+    "READ"
+  ],
+  "triggerFunction": "NONE",
+  "groupAccess": {}
+}

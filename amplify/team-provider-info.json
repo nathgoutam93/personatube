@@ -1,0 +1,21 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-personatube-dev-20630-authRole",
+      "UnauthRoleArn": "arn:aws:iam::580998214002:role/amplify-personatube-dev-20630-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::580998214002:role/amplify-personatube-dev-20630-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-personatube-dev-20630-deployment",
+      "UnauthRoleName": "amplify-personatube-dev-20630-unauthRole",
+      "StackName": "amplify-personatube-dev-20630",
+      "StackId": "arn:aws:cloudformation:us-east-1:580998214002:stack/amplify-personatube-dev-20630/93e35220-40ff-11ed-a7dc-12b525fb74cb",
+      "AmplifyAppId": "dszoh20qwcu65"
+    },
+    "categories": {
+      "auth": {
+        "personatubef67f9000": {},
+        "PersonaTube": {}
+      }
+    }
+  }
+}

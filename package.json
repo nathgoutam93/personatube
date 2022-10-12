@@ -12,6 +12,7 @@
     "@mediapipe/drawing_utils": "^0.3.1620248257",
     "@mediapipe/face_mesh": "^0.4.1633559619",
     "@tauri-apps/api": "^1.1.0",
+    "aws-amplify": "^4.3.37",
     "kalidokit": "^1.1.5",
     "next": "^12.2.5",
     "react": "^18.2.0",
